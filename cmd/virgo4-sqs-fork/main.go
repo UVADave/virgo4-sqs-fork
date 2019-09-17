@@ -15,8 +15,8 @@ func main() {
 	// Get config params and use them to init service context. Any issues are fatal
 	cfg := LoadConfiguration()
 
-	// load our AWS helper object
-	aws, err := NewAWS( )
+	// load our AWS_SQS helper object
+	aws, err := NewAwsSqs( AwsSqsConfig{ } )
 	if err != nil {
 		log.Fatal( err )
 	}
@@ -42,7 +42,7 @@ func main() {
 		log.Printf("Waiting for messages...")
 
 		// wait for a batch of messages
-		messages, err := aws.BatchMessageGet( inQueueHandle, uint( MAX_MESSAGES ), uint( cfg.PollTimeOut ) )
+		messages, err := aws.BatchMessageGet( inQueueHandle, uint(MAX_SQS_BLOCK_COUNT), uint( cfg.PollTimeOut ) )
 		if err != nil {
 			log.Fatal( err )
 		}

@@ -1,10 +1,18 @@
 package main
 
 import (
-   //"log"
+   "fmt"
 )
 
-var MAX_MESSAGES = 10
+// the maximum number of messages in a block
+var MAX_SQS_BLOCK_COUNT = 10
+
+// the maximum size of a block
+var MAX_SQS_BLOCK_SIZE = 262144
+
+// Errors
+var BlockCountTooLargeError = fmt.Errorf( "Block count is too large. Must be %d or less", MAX_SQS_BLOCK_COUNT )
+var BlockTooLargeError = fmt.Errorf( "Block size is too large. Must be %d or less", MAX_SQS_BLOCK_SIZE )
 
 // simplifications
 type QueueHandle  string
@@ -26,22 +34,24 @@ type Message struct {
    Payload      Payload
 }
 
-type AWS interface {
+type AWS_SQS interface {
    QueueHandle( string ) ( QueueHandle, error )
    BatchMessageGet( queue QueueHandle, maxMessages uint, waitTime uint ) ( []Message, error )
    BatchMessagePut( queue QueueHandle, messages []Message ) ( []OpStatus, error )
    BatchMessageDelete( queue QueueHandle, messages []Message ) ( []OpStatus, error )
 }
 
-// our singleton instance
-//var aws AWS
+type AwsSqsConfig struct {
+   supportLargeMessages bool
+   s3bucketName         string
+}
 
-// Initialize our AWS connection
-func NewAWS( ) ( AWS, error ) {
+// Initialize our AWS_SQS connection
+func NewAwsSqs( AwsSqsConfig ) (AWS_SQS, error ) {
 
    // mock the implementation here if necessary
 
-   aws, err := newAws( )
+   aws, err := newAwsSqs( )
    return aws, err
 }
 

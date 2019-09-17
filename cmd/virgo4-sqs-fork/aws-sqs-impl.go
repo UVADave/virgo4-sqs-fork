@@ -1,7 +1,6 @@
 package main
 
 import (
-   "fmt"
    "strconv"
 
    "github.com/aws/aws-sdk-go/aws"
@@ -9,17 +8,16 @@ import (
    "github.com/aws/aws-sdk-go/service/sqs"
 )
 
-var blockTooLarge = fmt.Errorf( "Batch size is too large. Must be %d or less", MAX_MESSAGES )
 var emptyOpList = make( []OpStatus, 0 )
 var emptyMessageList = make( []Message, 0 )
 
 // this is our implementation
-type awsImpl struct {
+type awsSqsImpl struct {
    svc       * sqs.SQS
 }
 
-// Initialize our AWS abstraction
-func newAws( ) ( AWS, error ) {
+// Initialize our AWS_SQS abstraction
+func newAwsSqs( ) (AWS_SQS, error ) {
 
    sess, err := session.NewSession( )
    if err != nil {
@@ -28,10 +26,10 @@ func newAws( ) ( AWS, error ) {
 
    svc := sqs.New( sess )
 
-   return &awsImpl{ svc }, nil
+   return &awsSqsImpl{svc }, nil
 }
 
-func ( awsi * awsImpl ) QueueHandle( queueName string ) ( QueueHandle, error ) {
+func ( awsi *awsSqsImpl) QueueHandle( queueName string ) ( QueueHandle, error ) {
 
    // get the queue URL from the name
    result, err := awsi.svc.GetQueueUrl( &sqs.GetQueueUrlInput{
@@ -45,11 +43,11 @@ func ( awsi * awsImpl ) QueueHandle( queueName string ) ( QueueHandle, error ) {
    return QueueHandle( *result.QueueUrl ), nil
 }
 
-func ( awsi * awsImpl ) BatchMessageGet( queue QueueHandle, maxMessages uint, waitTime uint ) ( []Message, error ) {
+func ( awsi *awsSqsImpl) BatchMessageGet( queue QueueHandle, maxMessages uint, waitTime uint ) ( []Message, error ) {
 
    // ensure the block size is not too large
-   if int( maxMessages ) > MAX_MESSAGES {
-      return emptyMessageList, blockTooLarge
+   if int( maxMessages ) > MAX_SQS_BLOCK_COUNT {
+      return emptyMessageList, BlockCountTooLargeError
    }
 
    q := string( queue )
@@ -84,7 +82,7 @@ func ( awsi * awsImpl ) BatchMessageGet( queue QueueHandle, maxMessages uint, wa
    return messages, nil
 }
 
-func ( awsi * awsImpl ) BatchMessagePut( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
+func ( awsi *awsSqsImpl) BatchMessagePut( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
 
    sz := len( messages )
    if sz == 0 {
@@ -92,8 +90,8 @@ func ( awsi * awsImpl ) BatchMessagePut( queue QueueHandle, messages []Message )
    }
 
    // ensure the block size is not too large
-   if sz > MAX_MESSAGES {
-      return emptyOpList, blockTooLarge
+   if sz > MAX_SQS_BLOCK_COUNT {
+      return emptyOpList, BlockCountTooLargeError
    }
 
    q := string( queue )
@@ -123,7 +121,7 @@ func ( awsi * awsImpl ) BatchMessagePut( queue QueueHandle, messages []Message )
    return ops, nil
 }
 
-func ( awsi * awsImpl ) BatchMessageDelete( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
+func ( awsi *awsSqsImpl) BatchMessageDelete( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
 
    sz := len( messages )
    if sz == 0 {
@@ -131,8 +129,8 @@ func ( awsi * awsImpl ) BatchMessageDelete( queue QueueHandle, messages []Messag
    }
 
    // ensure the block size is not too large
-   if sz > MAX_MESSAGES {
-      return emptyOpList, blockTooLarge
+   if sz > MAX_SQS_BLOCK_COUNT {
+      return emptyOpList, BlockCountTooLargeError
    }
 
    q := string( queue )
@@ -212,6 +210,7 @@ func awsAttribsFromMessageAttribs( attribs Attributes ) map[string] * sqs.Messag
    }
    return attributes
 }
+
 //
 // end of file
 //
