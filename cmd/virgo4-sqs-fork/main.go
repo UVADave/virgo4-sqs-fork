@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"github.com/uvalib/virgo4-sqs-fork/awssqs"
 )
 
 //
