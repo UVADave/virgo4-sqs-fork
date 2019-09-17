@@ -2,6 +2,7 @@ package main
 
 import (
    "strconv"
+   "time"
 
    "github.com/aws/aws-sdk-go/aws"
    "github.com/aws/aws-sdk-go/aws/session"
@@ -43,11 +44,16 @@ func ( awsi *awsSqsImpl) QueueHandle( queueName string ) ( QueueHandle, error ) 
    return QueueHandle( *result.QueueUrl ), nil
 }
 
-func ( awsi *awsSqsImpl) BatchMessageGet( queue QueueHandle, maxMessages uint, waitTime uint ) ( []Message, error ) {
+func ( awsi *awsSqsImpl) BatchMessageGet( queue QueueHandle, maxMessages uint, waitTime time.Duration ) ( []Message, error ) {
 
    // ensure the block size is not too large
    if int( maxMessages ) > MAX_SQS_BLOCK_COUNT {
       return emptyMessageList, BlockCountTooLargeError
+   }
+
+   // ensure the wait time is not too large
+   if waitTime.Seconds() > float64( MAX_SQS_WAIT_TIME ) {
+      return emptyMessageList, WaitTooLargeError
    }
 
    q := string( queue )
@@ -84,6 +90,7 @@ func ( awsi *awsSqsImpl) BatchMessageGet( queue QueueHandle, maxMessages uint, w
 
 func ( awsi *awsSqsImpl) BatchMessagePut( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
 
+   // early exit if no messages provided
    sz := len( messages )
    if sz == 0 {
       return emptyOpList, nil
@@ -123,6 +130,7 @@ func ( awsi *awsSqsImpl) BatchMessagePut( queue QueueHandle, messages []Message 
 
 func ( awsi *awsSqsImpl) BatchMessageDelete( queue QueueHandle, messages []Message ) ( []OpStatus, error ) {
 
+   // early exit if no messages provided
    sz := len( messages )
    if sz == 0 {
       return emptyOpList, nil

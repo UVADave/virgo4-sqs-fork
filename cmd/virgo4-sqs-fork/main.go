@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 )
 
 //
@@ -42,7 +43,7 @@ func main() {
 		log.Printf("Waiting for messages...")
 
 		// wait for a batch of messages
-		messages, err := aws.BatchMessageGet( inQueueHandle, uint(MAX_SQS_BLOCK_COUNT), uint( cfg.PollTimeOut ) )
+		messages, err := aws.BatchMessageGet( inQueueHandle, uint(MAX_SQS_BLOCK_COUNT), time.Duration( cfg.PollTimeOut ) * time.Second )
 		if err != nil {
 			log.Fatal( err )
 		}
