@@ -85,9 +85,16 @@ func main() {
 			}
 
 			// delete them all anyway
-			_, err = aws.BatchMessageDelete( inQueueHandle, messages )
+			opStatus, err = aws.BatchMessageDelete( inQueueHandle, messages )
 			if err != nil {
 				log.Fatal( err )
+			}
+
+			// check the operation results
+			for ix, op := range opStatus {
+				if op == false {
+					log.Printf( "WARNING: message %d failed to delete", ix )
+				}
 			}
 
 			duration := time.Since(start)
