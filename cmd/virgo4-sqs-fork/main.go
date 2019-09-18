@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 	"time"
-	"github.com/uvalib/virgo4-sqs-fork/awssqs"
+	//"github.com/uvalib/virgo4-sqs-sdk"
 )
 
 //
@@ -41,10 +41,11 @@ func main() {
 
     for {
 
-		log.Printf("Waiting for messages...")
+		//log.Printf("Waiting for messages...")
+		start := time.Now()
 
 		// wait for a batch of messages
-		messages, err := aws.BatchMessageGet( inQueueHandle, uint(MAX_SQS_BLOCK_COUNT), time.Duration( cfg.PollTimeOut ) * time.Second )
+		messages, err := aws.BatchMessageGet( inQueueHandle, uint( MAX_SQS_BLOCK_COUNT), time.Duration( cfg.PollTimeOut ) * time.Second )
 		if err != nil {
 			log.Fatal( err )
 		}
@@ -53,26 +54,44 @@ func main() {
 		sz := len( messages )
 		if sz != 0 {
 
-			log.Printf( "Received %d messages", sz )
+			//log.Printf( "Received %d messages", sz )
 
 			//
 			// send to each queue, ignore results for now
 			//
 
-			_, err = aws.BatchMessagePut( outQueue1Handle, messages )
+			opStatus, err := aws.BatchMessagePut( outQueue1Handle, messages )
 			if err != nil {
 				log.Fatal( err )
 			}
 
-			_, err = aws.BatchMessagePut( outQueue2Handle, messages )
+			// check the operation results
+			for ix, op := range opStatus {
+				if op == false {
+					log.Printf( "WARNING: message %d failed to send to queue 1", ix )
+				}
+			}
+
+			opStatus, err = aws.BatchMessagePut( outQueue2Handle, messages )
 			if err != nil {
 				log.Fatal( err )
 			}
 
+			// check the operation results
+			for ix, op := range opStatus {
+				if op == false {
+					log.Printf( "WARNING: message %d failed to send to queue 2", ix )
+				}
+			}
+
+			// delete them all anyway
 			_, err = aws.BatchMessageDelete( inQueueHandle, messages )
 			if err != nil {
 				log.Fatal( err )
 			}
+
+			duration := time.Since(start)
+			log.Printf("Processed %d messages (%0.2f tps)", sz, float64( sz ) / duration.Seconds() )
 
 		} else {
 			log.Printf("No messages received...")
