@@ -4,7 +4,8 @@ import (
 	"log"
 	"os"
 	"time"
-	//"github.com/uvalib/virgo4-sqs-sdk"
+
+	"github.com/uvalib/virgo4-sqs-sdk/awssqs"
 )
 
 //
@@ -18,7 +19,7 @@ func main() {
 	cfg := LoadConfiguration()
 
 	// load our AWS_SQS helper object
-	aws, err := NewAwsSqs( AwsSqsConfig{ } )
+	aws, err := awssqs.NewAwsSqs( awssqs.AwsSqsConfig{ } )
 	if err != nil {
 		log.Fatal( err )
 	}
@@ -45,7 +46,7 @@ func main() {
 		start := time.Now()
 
 		// wait for a batch of messages
-		messages, err := aws.BatchMessageGet( inQueueHandle, uint( MAX_SQS_BLOCK_COUNT), time.Duration( cfg.PollTimeOut ) * time.Second )
+		messages, err := aws.BatchMessageGet( inQueueHandle, awssqs.MAX_SQS_BLOCK_COUNT, time.Duration( cfg.PollTimeOut ) * time.Second )
 		if err != nil {
 			log.Fatal( err )
 		}
