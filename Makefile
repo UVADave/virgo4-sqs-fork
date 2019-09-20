@@ -21,6 +21,7 @@ clean:
 	$(GOCLEAN) cmd/
 	rm -rf bin
 
-deps:
-	$(GOGET) -u
+dep:
+	cd cmd/$(PACKAGENAME); $(GOGET) -u
 	$(GOMOD) tidy
+	$(GOMOD) verify
