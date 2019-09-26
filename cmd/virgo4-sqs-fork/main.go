@@ -13,7 +13,7 @@ import (
 //
 func main() {
 
-	log.Printf("===> %s service staring up <===", os.Args[ 0 ] )
+	log.Printf("===> %s service staring up (version: %s) <===", os.Args[ 0 ], Version( ) )
 
 	// Get config params and use them to init service context. Any issues are fatal
 	cfg := LoadConfiguration()
@@ -40,69 +40,34 @@ func main() {
 		log.Fatal( err )
 	}
 
+	// create the record channel
+	inboundMessageChan := make( chan awssqs.Message, cfg.WorkerQueueSize )
+
+	// start workers here
+	for w := 1; w <= cfg.Workers; w++ {
+		go worker( w, cfg, aws, inboundMessageChan, inQueueHandle, outQueue1Handle, outQueue2Handle )
+	}
+
     for {
 
-		//log.Printf("Waiting for messages...")
-		start := time.Now()
-
 		// wait for a batch of messages
-		messages, err := aws.BatchMessageGet( inQueueHandle, awssqs.MAX_SQS_BLOCK_COUNT, time.Duration( cfg.PollTimeOut ) * time.Second )
+		messages, err := aws.BatchMessageGet(inQueueHandle, awssqs.MAX_SQS_BLOCK_COUNT, time.Duration(cfg.PollTimeOut)*time.Second)
 		if err != nil {
-			log.Fatal( err )
+			log.Fatal(err)
 		}
 
 		// did we receive any?
-		sz := len( messages )
+		sz := len(messages)
 		if sz != 0 {
 
 			//log.Printf( "Received %d messages", sz )
 
-			//
-			// send to each queue, ignore results for now
-			//
-
-			opStatus, err := aws.BatchMessagePut( outQueue1Handle, messages )
-			if err != nil {
-				log.Fatal( err )
+			for _, m := range messages {
+				inboundMessageChan <- m
 			}
-
-			// check the operation results
-			for ix, op := range opStatus {
-				if op == false {
-					log.Printf( "WARNING: message %d failed to send to queue 1", ix )
-				}
-			}
-
-			opStatus, err = aws.BatchMessagePut( outQueue2Handle, messages )
-			if err != nil {
-				log.Fatal( err )
-			}
-
-			// check the operation results
-			for ix, op := range opStatus {
-				if op == false {
-					log.Printf( "WARNING: message %d failed to send to queue 2", ix )
-				}
-			}
-
-			// delete them all anyway
-			opStatus, err = aws.BatchMessageDelete( inQueueHandle, messages )
-			if err != nil {
-				log.Fatal( err )
-			}
-
-			// check the operation results
-			for ix, op := range opStatus {
-				if op == false {
-					log.Printf( "WARNING: message %d failed to delete", ix )
-				}
-			}
-
-			duration := time.Since(start)
-			log.Printf("Processed %d messages (%0.2f tps)", sz, float64( sz ) / duration.Seconds() )
 
 		} else {
-			log.Printf("No messages received...")
+			log.Printf("No messages available")
 		}
 	}
 }

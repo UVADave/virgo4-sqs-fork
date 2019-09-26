@@ -1,47 +1,78 @@
 package main
 
 import (
-	"flag"
 	"log"
+	"os"
+	"strconv"
 )
 
 // ServiceConfig defines all of the service configuration parameters
 type ServiceConfig struct {
-	InQueueName    string
-	OutQueue1Name  string
-	OutQueue2Name  string
-	PollTimeOut    int64
+	InQueueName    string    // SQS queue name for inbound documents
+	OutQueue1Name  string    // SQS queue name for outbound documents
+	OutQueue2Name  string    // SQS queue name for outbound documents
+	PollTimeOut    int64     // the SQS queue timeout (in seconds)
+
+	WorkerQueueSize int      // the inbound message queue size to feed the workers
+	Workers         int      // the number of worker processes
+}
+
+func ensureSet(env string) string {
+	val, set := os.LookupEnv(env)
+
+	if set == false {
+		log.Printf("environment variable not set: [%s]", env)
+		os.Exit(1)
+	}
+
+	return val
+}
+
+func ensureSetAndNonEmpty(env string) string {
+	val := ensureSet(env)
+
+	if val == "" {
+		log.Printf("environment variable not set: [%s]", env)
+		os.Exit(1)
+	}
+
+	return val
+}
+
+func envToInt( env string ) int {
+
+	number := ensureSetAndNonEmpty( env )
+	n, err := strconv.Atoi( number )
+	if err != nil {
+
+		os.Exit(1)
+	}
+	return n
 }
 
 // LoadConfiguration will load the service configuration from env/cmdline
 // and return a pointer to it. Any failures are fatal.
 func LoadConfiguration() *ServiceConfig {
 
-	log.Printf("Loading configuration...")
 	var cfg ServiceConfig
-	flag.StringVar(&cfg.InQueueName, "inqueue", "", "Inbound queue name")
-	flag.StringVar(&cfg.OutQueue1Name, "outqueue1", "", "Output queue 1 name")
-	flag.StringVar(&cfg.OutQueue2Name, "outqueue2", "", "Output queue 2 name")
-	flag.Int64Var(&cfg.PollTimeOut, "pollwait", 15, "Poll wait time (in seconds)")
 
-	flag.Parse()
-
-	if len( cfg.InQueueName ) == 0 {
-		log.Fatalf( "InQueueName cannot be blank" )
-	}
-
-	if len( cfg.OutQueue1Name ) == 0 {
-		log.Fatalf( "OutQueue1Name cannot be blank" )
-	}
-
-	if len( cfg.OutQueue2Name ) == 0 {
-		log.Fatalf( "OutQueue2Name cannot be blank" )
-	}
+	cfg.InQueueName = ensureSetAndNonEmpty( "VIRGO4_SQS_FORK_IN_QUEUE" )
+	cfg.OutQueue1Name = ensureSetAndNonEmpty( "VIRGO4_SQS_FORK_OUT_1_QUEUE" )
+	cfg.OutQueue2Name = ensureSetAndNonEmpty( "VIRGO4_SQS_FORK_OUT_2_QUEUE" )
+	cfg.PollTimeOut = int64( envToInt( "VIRGO4_SQS_FORK_QUEUE_POLL_TIMEOUT" ) )
+	cfg.WorkerQueueSize = envToInt( "VIRGO4_SQS_FORK_WORK_QUEUE_SIZE" )
+	cfg.Workers = envToInt( "VIRGO4_SQS_FORK_WORKERS" )
 
 	log.Printf("[CONFIG] InQueueName          = [%s]", cfg.InQueueName )
 	log.Printf("[CONFIG] OutQueue1Name        = [%s]", cfg.OutQueue1Name )
 	log.Printf("[CONFIG] OutQueue2Name        = [%s]", cfg.OutQueue2Name )
 	log.Printf("[CONFIG] PollTimeOut          = [%d]", cfg.PollTimeOut )
+	log.Printf("[CONFIG] WorkerQueueSize      = [%d]", cfg.WorkerQueueSize )
+	log.Printf("[CONFIG] Workers              = [%d]", cfg.Workers )
 
 	return &cfg
 }
+
+//
+// end of file
+//
