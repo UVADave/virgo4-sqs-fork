@@ -28,9 +28,8 @@ func worker(id int, config *ServiceConfig, aws awssqs.AWS_SQS, inbound <-chan aw
 		select {
 		case message = <-inbound:
 			arrived = true
-			break
+
 		case <-time.After(waitTimeout):
-			break
 		}
 
 		// we have an inbound message to process
